@@ -1,0 +1,25 @@
+{
+  "name": "plantonize-bff",
+  "version": "1.0.0",
+  "description": "BFF para o sistema Plantonize - gateway entre Angular, microserviços e Azure Function",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^6.0.1",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "MIT"
+}
