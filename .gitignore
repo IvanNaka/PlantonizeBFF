@@ -1,0 +1,46 @@
+# Dependências
+node_modules/
+
+# Arquivos temporários de deploy
+deploy*.zip
+app-logs*/
+logs-*/
+*.zip
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+iisnode/
+
+# Variáveis de ambiente locais (NÃO fazer commit)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Azure
+.azure/
+
+# Testes
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/
