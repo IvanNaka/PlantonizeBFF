@@ -1,0 +1,501 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Plantonize BFF API",
+    "version": "1.0.0",
+    "description": "Documentação completa da API do BFF do Plantonize - proxy e agregação entre frontend Angular, microserviços (Plantões e Notas Fiscais) e Azure Function."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:{port}",
+      "description": "Servidor local",
+      "variables": {
+        "port": {
+          "default": "3000"
+        }
+      }
+    }
+  ],
+  "tags": [
+    {"name": "Health", "description": "Endpoints de monitoramento"},
+    {"name": "Plantões", "description": "Operações relacionadas a plantões médicos"},
+    {"name": "Notas Fiscais", "description": "Operações relacionadas a notas fiscais (NFS-e)"},
+    {"name": "Faturas", "description": "Gerenciamento de faturas"},
+    {"name": "Municípios Alíquota", "description": "Configuração de alíquotas por município"},
+    {"name": "Impostos Resumo", "description": "Resumos de impostos por período"},
+    {"name": "Agregação", "description": "Endpoints que agregam dados de múltiplas fontes"}
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Status ok",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"status": {"type": "string"}, "service": {"type": "string"}}}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plantoes": {
+      "get": {
+        "tags": ["Plantões"],
+        "summary": "Listar todos os plantões",
+        "responses": {
+          "200": {"description": "Lista de plantões", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Plantao"}}}}}
+        }
+      },
+      "post": {
+        "tags": ["Plantões"],
+        "summary": "Criar plantão",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Plantao"}}}},
+        "responses": {
+          "201": {"description": "Plantão criado"}
+        }
+      }
+    },
+    "/api/plantoes/periodo": {
+      "get": {
+        "tags": ["Plantões"],
+        "summary": "Listar plantões por período",
+        "parameters": [
+          {"name": "dataInicio", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}},
+          {"name": "dataFinal", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}}
+        ],
+        "responses": {
+          "200": {"description": "Lista de plantões no período"}
+        }
+      }
+    },
+    "/api/plantoes/medico/{medicoId}": {
+      "get": {
+        "tags": ["Plantões"],
+        "summary": "Listar plantões por médico",
+        "parameters": [{"name": "medicoId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Lista de plantões do médico"}}
+      }
+    },
+    "/api/plantoes/hospital/{hospitalId}": {
+      "get": {
+        "tags": ["Plantões"],
+        "summary": "Listar plantões por hospital",
+        "parameters": [{"name": "hospitalId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Lista de plantões do hospital"}}
+      }
+    },
+    "/api/plantoes/municipio/{municipio}": {
+      "get": {
+        "tags": ["Plantões"],
+        "summary": "Listar plantões por município",
+        "parameters": [{"name": "municipio", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Lista de plantões do município"}}
+      }
+    },
+    "/api/plantoes/status/{status}": {
+      "get": {
+        "tags": ["Plantões"],
+        "summary": "Listar plantões por status",
+        "parameters": [{"name": "status", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Lista de plantões com o status especificado"}}
+      }
+    },
+    "/api/plantoes/{id}": {
+      "get": {
+        "tags": ["Plantões"],
+        "summary": "Obter plantão por ID",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Detalhes do plantão"}, "404": {"description": "Plantão não encontrado"}}
+      },
+      "put": {
+        "tags": ["Plantões"],
+        "summary": "Atualizar plantão",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Plantao"}}}},
+        "responses": {"204": {"description": "Plantão atualizado"}}
+      },
+      "delete": {
+        "tags": ["Plantões"],
+        "summary": "Deletar plantão",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {"description": "Plantão deletado"}}
+      }
+    },
+    "/api/notas": {
+      "get": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Listar todas as notas fiscais",
+        "responses": {"200": {"description": "Lista de notas fiscais", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Nota"}}}}}}
+      },
+      "post": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Criar nota fiscal",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Nota"}}}},
+        "responses": {"201": {"description": "Nota criada"}}
+      }
+    },
+    "/api/notas/emitir": {
+      "post": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Emitir nota fiscal (busca médico e cria nota)",
+        "description": "Endpoint que busca dados do médico no microserviço de plantões e cria a nota fiscal",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EmitirNotaPayload"}}}},
+        "responses": {"201": {"description": "Nota emitida"}, "404": {"description": "Médico não encontrado"}}
+      }
+    },
+    "/api/notas/medico/{medicoId}": {
+      "get": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Listar notas por médico",
+        "parameters": [{"name": "medicoId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Lista de notas do médico"}}
+      }
+    },
+    "/api/notas/{id}": {
+      "get": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Obter nota por ID",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Detalhes da nota"}}
+      },
+      "put": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Atualizar nota",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Nota"}}}},
+        "responses": {"200": {"description": "Nota atualizada"}}
+      },
+      "delete": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Deletar nota",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {"description": "Nota deletada"}}
+      }
+    },
+    "/api/notas/{id}/exists": {
+      "get": {
+        "tags": ["Notas Fiscais"],
+        "summary": "Verificar se nota existe",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Resultado da verificação"}}
+      }
+    },
+    "/api/faturas": {
+      "get": {
+        "tags": ["Faturas"],
+        "summary": "Listar faturas",
+        "responses": {"200": {"description": "Lista de faturas"}}
+      },
+      "post": {
+        "tags": ["Faturas"],
+        "summary": "Criar fatura",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Fatura"}}}},
+        "responses": {"201": {"description": "Fatura criada"}}
+      }
+    },
+    "/api/faturas/medico/{medicoId}": {
+      "get": {
+        "tags": ["Faturas"],
+        "summary": "Listar faturas por médico",
+        "parameters": [{"name": "medicoId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Lista de faturas do médico"}}
+      }
+    },
+    "/api/faturas/{id}": {
+      "get": {
+        "tags": ["Faturas"],
+        "summary": "Obter fatura por ID",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Detalhes da fatura"}}
+      },
+      "put": {
+        "tags": ["Faturas"],
+        "summary": "Atualizar fatura",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Fatura"}}}},
+        "responses": {"200": {"description": "Fatura atualizada"}}
+      },
+      "delete": {
+        "tags": ["Faturas"],
+        "summary": "Deletar fatura",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {"description": "Fatura deletada"}}
+      }
+    },
+    "/api/faturas/{id}/exists": {
+      "get": {
+        "tags": ["Faturas"],
+        "summary": "Verificar se fatura existe",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Resultado da verificação"}}
+      }
+    },
+    "/api/faturas/{id}/total": {
+      "get": {
+        "tags": ["Faturas"],
+        "summary": "Calcular total da fatura",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Total calculado"}}
+      }
+    },
+    "/api/municipiosaliquota": {
+      "get": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Listar municípios com alíquotas",
+        "responses": {"200": {"description": "Lista de municípios"}}
+      },
+      "post": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Criar município com alíquota",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MunicipioAliquota"}}}},
+        "responses": {"201": {"description": "Município criado"}}
+      }
+    },
+    "/api/municipiosaliquota/codigo/{codigo}": {
+      "get": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Obter município por código",
+        "parameters": [{"name": "codigo", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Detalhes do município"}}
+      }
+    },
+    "/api/municipiosaliquota/codigo/{codigo}/exists": {
+      "get": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Verificar se município existe (por código)",
+        "parameters": [{"name": "codigo", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Resultado da verificação"}}
+      }
+    },
+    "/api/municipiosaliquota/{id}": {
+      "get": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Obter município por ID",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Detalhes do município"}}
+      },
+      "put": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Atualizar município",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MunicipioAliquota"}}}},
+        "responses": {"200": {"description": "Município atualizado"}}
+      },
+      "delete": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Deletar município",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {"description": "Município deletado"}}
+      }
+    },
+    "/api/municipiosaliquota/{id}/exists": {
+      "get": {
+        "tags": ["Municípios Alíquota"],
+        "summary": "Verificar se município existe (por ID)",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Resultado da verificação"}}
+      }
+    },
+    "/api/impostosresumo": {
+      "get": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Listar resumos de impostos",
+        "responses": {"200": {"description": "Lista de resumos"}}
+      },
+      "post": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Criar resumo de impostos",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImpostoResumo"}}}},
+        "responses": {"201": {"description": "Resumo criado"}}
+      }
+    },
+    "/api/impostosresumo/medico/{medicoId}": {
+      "get": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Listar resumos por médico",
+        "parameters": [{"name": "medicoId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Lista de resumos do médico"}}
+      }
+    },
+    "/api/impostosresumo/medico/{medicoId}/periodo": {
+      "get": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Obter resumo por médico e período",
+        "parameters": [
+          {"name": "medicoId", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "mes", "in": "query", "required": true, "schema": {"type": "integer"}},
+          {"name": "ano", "in": "query", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {"200": {"description": "Resumo do período"}}
+      }
+    },
+    "/api/impostosresumo/calcular": {
+      "post": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Calcular impostos para médico e período",
+        "parameters": [
+          {"name": "medicoId", "in": "query", "required": true, "schema": {"type": "string"}},
+          {"name": "mes", "in": "query", "required": true, "schema": {"type": "integer"}},
+          {"name": "ano", "in": "query", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {"200": {"description": "Resultado do cálculo"}}
+      }
+    },
+    "/api/impostosresumo/{id}": {
+      "get": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Obter resumo por ID",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Detalhes do resumo"}}
+      },
+      "put": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Atualizar resumo",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ImpostoResumo"}}}},
+        "responses": {"200": {"description": "Resumo atualizado"}}
+      },
+      "delete": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Deletar resumo",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"204": {"description": "Resumo deletado"}}
+      }
+    },
+    "/api/impostosresumo/{id}/exists": {
+      "get": {
+        "tags": ["Impostos Resumo"],
+        "summary": "Verificar se resumo existe",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Resultado da verificação"}}
+      }
+    },
+    "/api/agregacao/dashboard": {
+      "get": {
+        "tags": ["Agregação"],
+        "summary": "Dashboard agregado (plantões + notas)",
+        "description": "Retorna resumo consolidado com totais de plantões, notas e agrupamentos por médico",
+        "responses": {
+          "200": {
+            "description": "Resumo agregado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalPlantoes": {"type": "integer"},
+                    "totalNotas": {"type": "integer"},
+                    "notasPorMedico": {"type": "object"},
+                    "plantoes": {"type": "array"},
+                    "notas": {"type": "array"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agregacao/enviar-nota": {
+      "post": {
+        "tags": ["Agregação"],
+        "summary": "Enviar nota por e-mail (Azure Function)",
+        "description": "Chama a Azure Function para enviar a nota fiscal por e-mail",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Nota"}}}},
+        "responses": {
+          "200": {"description": "E-mail enviado com sucesso"},
+          "502": {"description": "Erro ao chamar a Azure Function"}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Plantao": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "medico": {"type": "string"},
+          "data": {"type": "string", "format": "date-time"},
+          "duracaoHoras": {"type": "number"},
+          "hospital": {"type": "string"},
+          "municipio": {"type": "string"},
+          "status": {"type": "string"}
+        }
+      },
+      "Nota": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "numeroNota": {"type": "string"},
+          "dataEmissao": {"type": "string", "format": "date-time"},
+          "valorTotal": {"type": "number"},
+          "status": {"type": "integer"},
+          "municipioPrestacao": {"type": "string"},
+          "issRetido": {"type": "boolean"},
+          "medico": {"type": "object"},
+          "tomador": {"type": "object"},
+          "servicos": {"type": "array"},
+          "enviadoEmail": {"type": "boolean"}
+        }
+      },
+      "EmitirNotaPayload": {
+        "type": "object",
+        "required": ["medicoId", "numeroNota", "dataEmissao", "valorTotal", "municipioPrestacao", "issRetido", "servicos"],
+        "properties": {
+          "medicoId": {"type": "string"},
+          "numeroNota": {"type": "string"},
+          "dataEmissao": {"type": "string", "format": "date-time"},
+          "valorTotal": {"type": "number"},
+          "municipioPrestacao": {"type": "string"},
+          "issRetido": {"type": "boolean"},
+          "tomador": {"type": "object"},
+          "servicos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "descricao": {"type": "string"},
+                "quantidade": {"type": "number"},
+                "valorUnitario": {"type": "number"},
+                "aliquotaIss": {"type": "number"}
+              }
+            }
+          }
+        }
+      },
+      "Fatura": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "medicoId": {"type": "string"},
+          "dataEmissao": {"type": "string", "format": "date-time"},
+          "valorTotal": {"type": "number"}
+        }
+      },
+      "MunicipioAliquota": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "codigo": {"type": "string"},
+          "nome": {"type": "string"},
+          "aliquota": {"type": "number"}
+        }
+      },
+      "ImpostoResumo": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "medicoId": {"type": "string"},
+          "mes": {"type": "integer"},
+          "ano": {"type": "integer"},
+          "totalImpostos": {"type": "number"}
+        }
+      }
+    }
+  }
+}

@@ -31,3 +31,19 @@ GET /api/agregacao/dashboard
 Notas
 - Use o arquivo `.env` (fornecido) para configurar as URLs dos microserviços e da Azure Function.
 - O código está pronto para deploy em Azure App Service (ajustar variáveis de ambiente no portal).
+
+Documentação (Swagger)
+
+Depois de instalar as dependências, a documentação interativa estará disponível em:
+
+```
+GET /api-docs
+```
+
+Se preferir o JSON da especificação OpenAPI:
+
+```
+GET /src/swagger.json
+```
+
+Observação: em ambientes de produção com instalação mínima de dependências, a rota de documentação só será ativada se a dependência `swagger-ui-express` estiver instalada.
