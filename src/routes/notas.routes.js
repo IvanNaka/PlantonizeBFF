@@ -73,14 +73,14 @@ router.post('/emitir', async (req, res) => {
       valorTotal: payload.valorTotal,
       status: 1,
       municipioPrestacao: payload.municipioPrestacao,
-      issRetido: payload.issRetido,
+      issRetido: false,
       medico: {
         id: medico && medico.id ? medico.id : payload.medicoId,
-        nome: medico && medico.nome ? medico.nome : undefined,
-        cpfCnpj: medico && medico.cpfCnpj ? medico.cpfCnpj : medico && medico.cpf ? medico.cpf : undefined,
-        email: medico && medico.email ? medico.email : undefined,
-        municipio: medico && medico.municipio ? medico.municipio : undefined,
-        inscricaoMunicipal: medico && medico.inscricaoMunicipal ? medico.inscricaoMunicipal : undefined,
+        nome: medico && medico.nome ? medico.nome : null,
+        cpfCnpj: medico && medico.cpfCnpj ? medico.cpfCnpj : medico && medico.cpf ? medico.cpf : null,
+        email: medico && medico.email ? medico.email : null,
+        municipio: medico && medico.municipio ? medico.municipio : null,
+        inscricaoMunicipal: medico && medico.inscricaoMunicipal ? medico.inscricaoMunicipal : null,
         medicoId: medico && medico.id ? medico.id : payload.medicoId,
       },
       tomador: payload.tomador || null,
@@ -90,12 +90,12 @@ router.post('/emitir', async (req, res) => {
             descricao: s.descricao,
             quantidade: s.quantidade,
             valorUnitario: s.valorUnitario,
+            valorTotal: s.valorUnitario * s.quantidade,
             aliquotaIss: s.aliquotaIss,
           }))
         : [],
       enviadoEmail: false,
     };
-
     const criado = await microB.criarNota(notaBody);
     return res.status(201).json(criado);
   } catch (err) {

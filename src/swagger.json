@@ -7,8 +7,12 @@
   },
   "servers": [
     {
+      "url": "https://plantonize-bff.azurewebsites.net",
+      "description": "Servidor de produção (Azure)"
+    },
+    {
       "url": "http://localhost:{port}",
-      "description": "Servidor local",
+      "description": "Servidor local (desenvolvimento)",
       "variables": {
         "port": {
           "default": "3000"

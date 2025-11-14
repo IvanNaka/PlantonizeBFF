@@ -26,7 +26,7 @@ module.exports = {
   // ---------- Notas Fiscais (/api/notasfiscais) ----------
   async listarNotas() {
     try {
-    const res = await api.get('/notasfiscais');
+    const res = await api.get('/v2/notas-fiscais');
       return res.data;
     } catch (err) {
       throw makeError(err, 'Erro ao listar notas');
@@ -53,7 +53,7 @@ module.exports = {
 
   async criarNota(nota) {
     try {
-  const res = await api.post('/notasfiscais', nota);
+      const res = await api.post('/v2/notas-fiscais', nota);
       return res.data;
     } catch (err) {
       throw makeError(err, 'Erro ao criar nota');
